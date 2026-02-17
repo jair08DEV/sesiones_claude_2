@@ -3,7 +3,7 @@
 @section('content')
 <div class="container py-4">
 
-    {{-- Alertas flash --}}
+    {{-- Flash --}}
     @if (session('status') || session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             {{ session('success') ?? session('status') }}
@@ -38,7 +38,7 @@
                     </div>
                     <div>
                         <p class="text-muted small mb-0">Total proyectos</p>
-                        <h4 class="fw-bold mb-0">0</h4>
+                        <h4 class="fw-bold mb-0">{{ $stats['total'] }}</h4>
                     </div>
                 </div>
             </div>
@@ -52,8 +52,8 @@
                         </svg>
                     </div>
                     <div>
-                        <p class="text-muted small mb-0">Completados</p>
-                        <h4 class="fw-bold mb-0">0</h4>
+                        <p class="text-muted small mb-0">Terminados</p>
+                        <h4 class="fw-bold mb-0">{{ $stats['terminados'] }}</h4>
                     </div>
                 </div>
             </div>
@@ -69,7 +69,7 @@
                     </div>
                     <div>
                         <p class="text-muted small mb-0">En progreso</p>
-                        <h4 class="fw-bold mb-0">0</h4>
+                        <h4 class="fw-bold mb-0">{{ $stats['en_progreso'] }}</h4>
                     </div>
                 </div>
             </div>
@@ -84,32 +84,110 @@
                     </div>
                     <div>
                         <p class="text-muted small mb-0">Vencidos</p>
-                        <h4 class="fw-bold mb-0">0</h4>
+                        <h4 class="fw-bold mb-0">{{ $stats['vencidos'] }}</h4>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Tabla de proyectos --}}
+    {{-- Listado de proyectos --}}
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
             <h5 class="mb-0 fw-semibold">Mis proyectos</h5>
+            @if ($projects->isNotEmpty())
+                <span class="badge bg-primary rounded-pill">{{ $projects->count() }}</span>
+            @endif
         </div>
-        <div class="card-body p-0">
-            {{-- Estado vacío --}}
-            <div class="text-center py-5 text-muted">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor"
+
+        @if ($projects->isEmpty())
+            {{-- Empty state --}}
+            <div class="card-body text-center py-5 text-muted">
+                <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor"
                      class="bi bi-folder-plus mb-3 opacity-25" viewBox="0 0 16 16">
                     <path d="m.5 3 .04.87a2 2 0 0 0-.342 1.311l.637 7A2 2 0 0 0 2.826 14H9v-1H2.826a1 1 0 0 1-.995-.91l-.637-7A1 1 0 0 1 2.19 4h11.62a1 1 0 0 1 .996 1.09L14.54 8h1.005l.256-2.819A2 2 0 0 0 13.81 3H9.828a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 6.172 1H2.5a2 2 0 0 0-2 2m5.672-1a1 1 0 0 1 .707.293L7.586 3H2.19q-.362.002-.683.12L1.5 2.98a1 1 0 0 1 1-.98z"/>
                     <path d="M13.5 9a.5.5 0 0 1 .5.5V11h1.5a.5.5 0 1 1 0 1H14v1.5a.5.5 0 1 1-1 0V12h-1.5a.5.5 0 0 1 0-1H13V9.5a.5.5 0 0 1 .5-.5"/>
                 </svg>
-                <p class="mb-3">Todavía no tienes proyectos.</p>
-                <a href="{{ route('projects.create') }}" class="btn btn-outline-primary btn-sm">
-                    Crear tu primer proyecto
+                <h6 class="fw-semibold mb-1">Sin proyectos aún</h6>
+                <p class="small mb-3">Crea tu primer proyecto y empieza a organizar tus tareas.</p>
+                <a href="{{ route('projects.create') }}" class="btn btn-primary btn-sm px-4">
+                    Crear primer proyecto
                 </a>
             </div>
-        </div>
+
+        @else
+            {{-- Tabla --}}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Proyecto</th>
+                            <th>Fecha límite</th>
+                            <th class="text-center">Tareas</th>
+                            <th class="text-center">Progreso</th>
+                            <th class="text-center">Estado</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($projects as $project)
+                            @php
+                                $pct = $project->tasks_count > 0
+                                    ? round(($project->completed_tasks_count / $project->tasks_count) * 100)
+                                    : 0;
+                                $isOverdue  = $project->deadline->isPast();
+                                $isDone     = $project->tasks_count > 0 && $project->tasks_count === $project->completed_tasks_count;
+                                $statusLabel = $isDone ? 'Terminado' : ($isOverdue ? 'Vencido' : 'Activo');
+                                $statusClass = $isDone ? 'success' : ($isOverdue ? 'danger' : 'primary');
+                            @endphp
+                            <tr>
+                                <td class="ps-4">
+                                    <a href="{{ route('projects.show', $project) }}"
+                                       class="fw-semibold text-decoration-none text-dark">
+                                        {{ $project->name }}
+                                    </a>
+                                    @if ($project->description)
+                                        <p class="text-muted small mb-0">
+                                            {{ Str::limit($project->description, 60) }}
+                                        </p>
+                                    @endif
+                                </td>
+                                <td class="text-nowrap">
+                                    <span class="{{ $isOverdue && !$isDone ? 'text-danger fw-semibold' : 'text-muted' }}">
+                                        {{ $project->deadline->format('d/m/Y') }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary rounded-pill">
+                                        {{ $project->tasks_count }}
+                                    </span>
+                                </td>
+                                <td style="min-width: 120px">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" style="height: 6px">
+                                            <div class="progress-bar bg-{{ $statusClass }}"
+                                                 style="width: {{ $pct }}%"></div>
+                                        </div>
+                                        <span class="small text-muted">{{ $pct }}%</span>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-{{ $statusClass }} bg-opacity-10 text-{{ $statusClass }} border border-{{ $statusClass }} border-opacity-25">
+                                        {{ $statusLabel }}
+                                    </span>
+                                </td>
+                                <td class="text-end pe-3">
+                                    <a href="{{ route('projects.show', $project) }}"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        Ver
+                                    </a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </div>
 
 </div>

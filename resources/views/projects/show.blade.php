@@ -69,11 +69,37 @@
                             <label for="task_description" class="form-label fw-semibold small">
                                 Descripción <span class="text-muted fw-normal">(opcional)</span>
                             </label>
-                            <textarea id="task_description" name="description" rows="3"
+                            <textarea id="task_description" name="description" rows="2"
                                       class="form-control @error('description') is-invalid @enderror"
                                       placeholder="Detalla la tarea…">{{ old('description') }}</textarea>
                             @error('description')
                                 <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        {{-- Estimación --}}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">
+                                Estimación <span class="text-muted fw-normal">(opcional)</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="number" name="estimated_time" id="estimated_time"
+                                       value="{{ old('estimated_time') }}"
+                                       class="form-control @error('estimated_time') is-invalid @enderror"
+                                       placeholder="0" min="1" max="9999">
+                                <select name="estimated_unit" id="estimated_unit"
+                                        class="form-select @error('estimated_unit') is-invalid @enderror"
+                                        style="max-width: 110px">
+                                    <option value="minutos" {{ old('estimated_unit', 'horas') === 'minutos' ? 'selected' : '' }}>min</option>
+                                    <option value="horas"   {{ old('estimated_unit', 'horas') === 'horas'   ? 'selected' : '' }}>horas</option>
+                                    <option value="dias"    {{ old('estimated_unit') === 'dias'    ? 'selected' : '' }}>días</option>
+                                </select>
+                            </div>
+                            @error('estimated_time')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                            @error('estimated_unit')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
                             @enderror
                         </div>
 
@@ -93,10 +119,10 @@
                             @enderror
                         </div>
 
-                        {{-- Estado --}}
+                        {{-- Estado inicial --}}
                         <div class="mb-4">
                             <label for="status" class="form-label fw-semibold small">
-                                Estado <span class="text-danger">*</span>
+                                Estado inicial <span class="text-danger">*</span>
                             </label>
                             <select id="status" name="status"
                                     class="form-select @error('status') is-invalid @enderror">
@@ -135,7 +161,6 @@
             @else
                 <div class="d-flex flex-column gap-3">
                     @foreach ($tasks as $task)
-
                         @php
                             $priorityClass = match($task->priority) {
                                 'alta'  => 'danger',
@@ -148,47 +173,91 @@
                                 'testing'     => 'info',
                                 'terminada'   => 'success',
                             };
-                            $statusLabel = [
+                            $statusLabels = [
                                 'backlog'     => 'Backlog',
                                 'en_progreso' => 'En progreso',
                                 'testing'     => 'Testing',
                                 'terminada'   => 'Terminada',
-                            ][$task->status];
-                            $priorityLabel = [
-                                'alta'  => 'Alta',
-                                'media' => 'Media',
-                                'baja'  => 'Baja',
-                            ][$task->priority];
+                            ];
+                            $nextStatus = $task->nextStatus();
+                            $nextLabel  = $nextStatus ? $statusLabels[$nextStatus] : null;
                         @endphp
 
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body d-flex align-items-start justify-content-between gap-3">
-                                <div class="flex-grow-1">
-                                    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                                        <h6 class="mb-0 fw-semibold">{{ $task->title }}</h6>
-                                        <span class="badge bg-{{ $priorityClass }} bg-opacity-75">
-                                            {{ $priorityLabel }}
-                                        </span>
-                                        <span class="badge bg-{{ $statusClass }}">
-                                            {{ $statusLabel }}
-                                        </span>
+                        <div class="card border-0 shadow-sm {{ $task->isFinished() ? 'opacity-75' : '' }}">
+                            <div class="card-body">
+                                <div class="d-flex align-items-start justify-content-between gap-3">
+
+                                    {{-- Info de la tarea --}}
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                                            @if ($task->isFinished())
+                                                <s class="fw-semibold text-muted">{{ $task->title }}</s>
+                                            @else
+                                                <h6 class="mb-0 fw-semibold">{{ $task->title }}</h6>
+                                            @endif
+                                            <span class="badge bg-{{ $priorityClass }} bg-opacity-75">
+                                                {{ ['alta'=>'Alta','media'=>'Media','baja'=>'Baja'][$task->priority] }}
+                                            </span>
+                                            <span class="badge bg-{{ $statusClass }}">
+                                                {{ $statusLabels[$task->status] }}
+                                            </span>
+                                        </div>
+
+                                        @if ($task->description)
+                                            <p class="text-muted small mb-1">{{ $task->description }}</p>
+                                        @endif
+
+                                        {{-- Estimación --}}
+                                        @if ($task->estimated_time)
+                                            <span class="text-muted small">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" class="me-1">
+                                                    <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71z"/>
+                                                    <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0"/>
+                                                </svg>
+                                                {{ $task->estimated_time }} {{ $task->estimated_unit }}
+                                            </span>
+                                        @endif
                                     </div>
-                                    @if ($task->description)
-                                        <p class="text-muted small mb-0">{{ $task->description }}</p>
-                                    @endif
+
+                                    {{-- Acciones --}}
+                                    <div class="d-flex gap-2 align-items-center">
+
+                                        {{-- Botón avanzar estado --}}
+                                        @if ($nextLabel)
+                                            <form method="POST"
+                                                  action="{{ route('tasks.advance', [$project, $task]) }}">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit"
+                                                        class="btn btn-sm {{ $nextStatus === 'terminada' ? 'btn-success' : 'btn-outline-primary' }}"
+                                                        title="Mover a {{ $nextLabel }}">
+                                                    @if ($nextStatus === 'terminada')
+                                                        ✓ Terminar
+                                                    @else
+                                                        → {{ $nextLabel }}
+                                                    @endif
+                                                </button>
+                                            </form>
+                                        @else
+                                            <span class="badge bg-success px-3 py-2">✓ Terminada</span>
+                                        @endif
+
+                                        {{-- Botón eliminar --}}
+                                        <form method="POST"
+                                              action="{{ route('tasks.destroy', [$project, $task]) }}"
+                                              onsubmit="return confirm('¿Eliminar esta tarea?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                                                    <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+                                                </svg>
+                                            </button>
+                                        </form>
+
+                                    </div>
                                 </div>
-                                <form method="POST"
-                                      action="{{ route('tasks.destroy', [$project, $task]) }}"
-                                      onsubmit="return confirm('¿Eliminar esta tarea?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-                                            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
-                                            <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
-                                        </svg>
-                                    </button>
-                                </form>
                             </div>
                         </div>
 
