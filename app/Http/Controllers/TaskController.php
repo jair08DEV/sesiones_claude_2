@@ -30,6 +30,24 @@ class TaskController extends Controller
                          ->with('success', 'Tarea añadida correctamente.');
     }
 
+    public function update(Request $request, Project $project, Task $task)
+    {
+        abort_if($task->status === 'terminada', 403, 'No se puede editar una tarea terminada.');
+
+        $data = $request->validate([
+            'title'          => 'required|string|max:255',
+            'description'    => 'nullable|string',
+            'priority'       => 'required|in:alta,media,baja',
+            'estimated_time' => 'nullable|integer|min:1|max:9999',
+            'estimated_unit' => 'nullable|required_with:estimated_time|in:minutos,horas,dias',
+        ]);
+
+        $task->update($data);
+
+        return redirect()->route('projects.show', $project)
+                         ->with('success', 'Tarea actualizada correctamente.');
+    }
+
     public function advanceStatus(Project $project, Task $task)
     {
         $next = $task->nextStatus();

@@ -37,4 +37,13 @@ class ProjectController extends Controller
 
         return view('projects.show', compact('project', 'tasks'));
     }
+
+    public function close(Project $project)
+    {
+        $project->update(['status' => 'cerrado']);
+        $project->tasks()->update(['status' => 'terminada']);
+
+        return redirect()->route('home')
+                         ->with('success', "Proyecto «{$project->name}» cerrado. Todas sus tareas han sido marcadas como terminadas.");
+    }
 }

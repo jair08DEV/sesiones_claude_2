@@ -15,9 +15,11 @@ Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name
 Route::middleware('auth')->group(function () {
     Route::get('/projects/create',        [ProjectController::class, 'create'])->name('projects.create');
     Route::post('/projects',              [ProjectController::class, 'store'])->name('projects.store');
-    Route::get('/projects/{project}',     [ProjectController::class, 'show'])->name('projects.show');
+    Route::get('/projects/{project}',          [ProjectController::class, 'show'])->name('projects.show');
+    Route::patch('/projects/{project}/close', [ProjectController::class, 'close'])->name('projects.close');
 
     Route::post('/projects/{project}/tasks',                      [TaskController::class, 'store'])->name('tasks.store');
+    Route::patch('/projects/{project}/tasks/{task}',              [TaskController::class, 'update'])->name('tasks.update');
     Route::patch('/projects/{project}/tasks/{task}/advance',      [TaskController::class, 'advanceStatus'])->name('tasks.advance');
     Route::delete('/projects/{project}/tasks/{task}',             [TaskController::class, 'destroy'])->name('tasks.destroy');
 });

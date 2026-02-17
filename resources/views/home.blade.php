@@ -135,15 +135,16 @@
                                 $pct = $project->tasks_count > 0
                                     ? round(($project->completed_tasks_count / $project->tasks_count) * 100)
                                     : 0;
-                                $isOverdue  = $project->deadline->isPast();
-                                $isDone     = $project->tasks_count > 0 && $project->tasks_count === $project->completed_tasks_count;
-                                $statusLabel = $isDone ? 'Terminado' : ($isOverdue ? 'Vencido' : 'Activo');
-                                $statusClass = $isDone ? 'success' : ($isOverdue ? 'danger' : 'primary');
+                                $isClosed    = $project->status === 'cerrado';
+                                $isDone      = !$isClosed && $project->tasks_count > 0 && $project->tasks_count === $project->completed_tasks_count;
+                                $isOverdue   = !$isClosed && $project->deadline->isPast();
+                                $statusLabel = $isClosed ? 'Cerrado' : ($isDone ? 'Terminado' : ($isOverdue ? 'Vencido' : 'Activo'));
+                                $statusClass = $isClosed ? 'secondary' : ($isDone ? 'success' : ($isOverdue ? 'danger' : 'primary'));
                             @endphp
-                            <tr>
+                            <tr class="{{ $isClosed ? 'text-muted opacity-75' : '' }}">
                                 <td class="ps-4">
                                     <a href="{{ route('projects.show', $project) }}"
-                                       class="fw-semibold text-decoration-none text-dark">
+                                       class="fw-semibold text-decoration-none {{ $isClosed ? 'text-muted' : 'text-dark' }}">
                                         {{ $project->name }}
                                     </a>
                                     @if ($project->description)
@@ -153,7 +154,7 @@
                                     @endif
                                 </td>
                                 <td class="text-nowrap">
-                                    <span class="{{ $isOverdue && !$isDone ? 'text-danger fw-semibold' : 'text-muted' }}">
+                                    <span class="{{ $isOverdue ? 'text-danger fw-semibold' : 'text-muted' }}">
                                         {{ $project->deadline->format('d/m/Y') }}
                                     </span>
                                 </td>
@@ -177,10 +178,23 @@
                                     </span>
                                 </td>
                                 <td class="text-end pe-3">
-                                    <a href="{{ route('projects.show', $project) }}"
-                                       class="btn btn-sm btn-outline-secondary">
-                                        Ver
-                                    </a>
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <a href="{{ route('projects.show', $project) }}"
+                                           class="btn btn-sm btn-outline-secondary">
+                                            Ver
+                                        </a>
+                                        @unless ($isClosed)
+                                            <form action="{{ route('projects.close', $project) }}"
+                                                  method="POST"
+                                                  onsubmit="return confirm('¿Cerrar el proyecto «{{ addslashes($project->name) }}»? Todas sus tareas pasarán a Terminada.')">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    Cerrar
+                                                </button>
+                                            </form>
+                                        @endunless
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

@@ -220,7 +220,7 @@
                                     </div>
 
                                     {{-- Acciones --}}
-                                    <div class="d-flex gap-2 align-items-center">
+                                    <div class="d-flex gap-2 align-items-center flex-wrap">
 
                                         {{-- Botón avanzar estado --}}
                                         @if ($nextLabel)
@@ -241,6 +241,19 @@
                                         @else
                                             <span class="badge bg-success px-3 py-2">✓ Terminada</span>
                                         @endif
+
+                                        {{-- Botón editar (solo si no está terminada) --}}
+                                        @unless ($task->isFinished())
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-secondary"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#editTask{{ $task->id }}"
+                                                    title="Editar tarea">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                                    <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325"/>
+                                                </svg>
+                                            </button>
+                                        @endunless
 
                                         {{-- Botón eliminar --}}
                                         <form method="POST"
@@ -269,4 +282,89 @@
     </div>
 
 </div>
+
+{{-- Modales de edición (uno por tarea no terminada) --}}
+@foreach ($tasks as $task)
+    @unless ($task->isFinished())
+        <div class="modal fade" id="editTask{{ $task->id }}" tabindex="-1"
+             aria-labelledby="editTask{{ $task->id }}Label" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="POST" action="{{ route('tasks.update', [$project, $task]) }}">
+                        @csrf
+                        @method('PATCH')
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-semibold" id="editTask{{ $task->id }}Label">
+                                Editar tarea
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small">
+                                    Título <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" name="title"
+                                       value="{{ old('title', $task->title) }}"
+                                       class="form-control" required maxlength="255">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small">
+                                    Descripción <span class="text-muted fw-normal">(opcional)</span>
+                                </label>
+                                <textarea name="description" rows="2"
+                                          class="form-control">{{ old('description', $task->description) }}</textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small">
+                                    Estimación <span class="text-muted fw-normal">(opcional)</span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="estimated_time"
+                                           value="{{ old('estimated_time', $task->estimated_time) }}"
+                                           class="form-control" placeholder="0" min="1" max="9999">
+                                    <select name="estimated_unit" class="form-select" style="max-width: 110px">
+                                        @foreach (['minutos' => 'min', 'horas' => 'horas', 'dias' => 'días'] as $val => $label)
+                                            <option value="{{ $val }}"
+                                                {{ old('estimated_unit', $task->estimated_unit) === $val ? 'selected' : '' }}>
+                                                {{ $label }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-1">
+                                <label class="form-label fw-semibold small">
+                                    Prioridad <span class="text-danger">*</span>
+                                </label>
+                                <select name="priority" class="form-select" required>
+                                    @foreach (['alta' => 'Alta', 'media' => 'Media', 'baja' => 'Baja'] as $val => $label)
+                                        <option value="{{ $val }}"
+                                            {{ old('priority', $task->priority) === $val ? 'selected' : '' }}>
+                                            {{ $label }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                Guardar cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endunless
+@endforeach
+
 @endsection
